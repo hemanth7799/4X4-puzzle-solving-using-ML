@@ -1,0 +1,206 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<limits.h>
+#define N 4 // defining n puzzle size
+int row[] = { 1, 0, -1, 0 };// array for checking edge cases while swaping
+int col[] = { 0, -1, 0, 1 };
+// defining structures
+typedef struct Node{
+	struct Node* parent;
+	int array[N][N];
+	int dist;int x,y,level;
+	struct Node* next; 
+}node;
+// global pointers for closed lists and root node
+node* closedlist;
+node* head;
+
+// function declarations
+int distCalc(int source[][N],int dest[][N]);// calculating heuristic h(n)
+
+int checks(int x,int y);//checking edge cases while sliding
+
+void printarray(int arr[][N]);//printing 4x4 puzzle matrix
+
+void pathPrint(node* root);//  function for printing path
+
+void visited(node* root,node* parent);//function to avoid visiting same nodes again
+
+int checkingForDuplicates(node* root);//function for checking and removing duplicates
+
+node* Minimumnode(node* root);//function for finding node with min f(n) value
+
+node *Insertnode(int arr[][N],int x,int y,int newx,int newy,int level,int dest[][N],node* parent);//inserting node
+
+void SlidingPuzzle(int dest[][N]);//a star algorithm function f
+
+
+
+int main(){
+	int source[N][N];
+	int i=0;
+	int j=0;
+	i=0;
+	while(i>=0&&i<N){
+		j=0;
+		while(j>=0&&j<N){
+			scanf("%d",&source[i][j]);//taking userinput
+			j++;
+		}
+		i++;
+	}
+	int dest[N][N] = {{1,2,3,4},{5,6,7,8},{9,10,11,12},{13,14,15,0}};
+	int a;
+	int b;
+	i=0;
+	//finding empty slide position i.e 0
+	while(i>=0&&i<N){
+		j=0;
+		while(j>=0&&j<N){
+			if(source[i][j]==0){
+				a=i;
+				b=j;
+			}
+			j++;
+		}
+		i++;
+	}
+	head = Insertnode(source,a,b,a,b,0,dest,NULL); // insertion of start node to open list
+	SlidingPuzzle(dest);//astar algorithm for finding destination
+	return 0;
+}
+
+int distCalc(int source[][N],int dest[][N]){
+	int counter=0;
+	for(int i=0;i<N;i++){
+		int j=0;
+		while(j<N){
+			if(source[i][j]!=dest[i][j])//calculating h(n) no of misplaced tiles
+				counter++;
+			j++;
+		}
+	}
+	return counter;
+}
+int checks(int x,int y){return (x>=0 && x<N && y>=0 && y<N);} //worst case check
+
+void printarray(int arr[][N])
+{	int i=0;
+    while(i < N)
+    {	int j=0;
+        while(j < N){
+            printf("%d\t", arr[i][j]);//printing NxN matrix
+            j++;
+        }
+        printf("\n");
+        i++;
+    }
+    printf("\n");
+} 
+
+void pathPrint(node* root){
+	if(root->parent!=NULL){
+		pathPrint(root->parent);}//printing nodes from last to first
+	printarray(root->array);	
+}
+void visited(node* root,node* parent){
+	node* temp = (node*)malloc(sizeof(node));
+		temp->parent = parent;//storing parent of child
+		for(int i=0;i<N;i++){
+			int j=0;
+			while(j<N){	
+				temp->array[i][j]=root->array[i][j];
+				j++;
+			}
+		}
+		temp->dist = root->dist;//copying values
+		temp->x = root->x;
+		temp->y = root->y; 
+		temp->level=root->level;
+		temp->next = closedlist;
+		closedlist = temp;	}
+int checkingForDuplicates(node* root){ 
+ 	node* temp=closedlist;
+ 	while(temp!=NULL){
+ 		int counter=0,i,j;
+ 		for(i=0;i<N;i++){
+ 			j=0;
+			while(j<N){
+				if (temp->array[i][j]!=root->array[i][j]){
+					counter++;
+					break;}//duplicate check by comparision
+					j++;}
+			if(counter!=0){
+				counter=0;
+				break;}}
+		if(i==N && j==N){
+				return 1;}
+		temp=temp->next;
+ 	}
+ 	return 0;		
+}
+node* Minimumnode(node* root)
+{   int min = INT_MAX;
+    node* temp;
+    node* temp1;
+    temp1=root;
+    int pos=0;
+    int min_pos;
+    if(!root->next){
+    	return root;}
+    while (temp1 != NULL) {
+    	if(checkingForDuplicates(temp1)==0){
+		if (min > temp1->dist+temp1->level){
+		    	min = (temp1->dist+temp1->level);
+		    	temp=temp1;
+		     }
+	    }
+	    temp1 = temp1->next;
+	   }
+   return temp;      
+}
+node *Insertnode(int arr[][N],int x,int y,int newx,int newy,int level,int dest[][N],node* parent){
+	node* temp = (node*)malloc(sizeof(node));
+		temp->parent = parent;//storing parent
+		
+		for(int i=0;i<N;i++){
+			int j=0;
+			while(j<N){	
+				temp->array[i][j]=arr[i][j];//copying values
+				j++;
+			}
+		}
+		int swap = temp->array[newx][newy];
+		temp->array[newx][newy] = temp->array[x][y];temp->array[x][y] = swap;
+		temp->dist = distCalc(temp->array,dest);	temp->level = level;	
+		temp->x = newx;temp->y = newy; temp->next = NULL;
+		return temp;
+}
+void SlidingPuzzle(int dest[][N]){
+	while(head!=NULL){
+		node* temp = Minimumnode(head);
+		if(!temp->dist){
+			pathPrint(temp);//printing path
+			printf("reached goal\n");
+			exit(0);//exiting with success status
+		}
+		int x=temp->x;
+		int y=temp->y;
+		if(checkingForDuplicates(temp)==0)
+		{
+			for(int i=0;i<4;i++){
+				if(checks(x+row[i],y+col[i])){
+					node* temp1 = Insertnode(temp->array,x,y,x+row[i],y+col[i],temp->level+1,dest,temp);
+					if(head==NULL){
+							head=temp1;
+					}
+					else{
+						temp1->next=head;
+						head=temp1;
+					}
+				}
+			}
+		}
+		visited(temp,temp->parent);	
+	}	
+}
